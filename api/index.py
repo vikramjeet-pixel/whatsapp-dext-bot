@@ -39,6 +39,7 @@ TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
 DEXT_INBOUND_EMAIL = os.getenv("DEXT_INBOUND_EMAIL", "").strip()
+FROM_EMAIL = os.getenv("FROM_EMAIL", "Receipts Bot <onboarding@resend.dev>").strip()
 
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
@@ -137,7 +138,7 @@ async def handle_whatsapp_message(
         subject = f"Receipt from {sender_clean}: {notes_display[:40]}"
 
         email_payload = {
-            "from": "Receipts Bot <onboarding@resend.dev>",
+            "from": FROM_EMAIL,
             "to": [DEXT_INBOUND_EMAIL],
             "subject": subject,
             "html": f"""
