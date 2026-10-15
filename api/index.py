@@ -95,14 +95,27 @@ async def handle_whatsapp_message(
         return Response(content=error_twiml, media_type="application/xml")
 
     try:
-        # Step 1: Download media file from Twilio's protected CDN
-        # Twilio requires HTTP Basic Authentication with Account SID and Auth Token
+        # Step 1: Download media file from Twilio's CDN
         auth_creds = None
         if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
             auth_creds = (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
-        media_resp = requests.get(MediaUrl0, auth=auth_creds, timeout=20)
-        media_resp.raise_for_status()
+        media_resp = None
+        if auth_creds:
+            try:
+                media_resp = requests.get(MediaUrl0, auth=auth_creds, timeout=20)
+                media_resp.raise_for_status()
+            except requests.exceptions.HTTPError as err:
+                if err.response is not None and err.response.status_code == 401:
+                    print("[!] 401 with auth credentials, trying unauthenticated fallback...")
+                    media_resp = requests.get(MediaUrl0, timeout=20)
+                    media_resp.raise_for_status()
+                else:
+                    raise
+        else:
+            media_resp = requests.get(MediaUrl0, timeout=20)
+            media_resp.raise_for_status()
+
         image_bytes = media_resp.content
 
         # Determine file extension from content-type
