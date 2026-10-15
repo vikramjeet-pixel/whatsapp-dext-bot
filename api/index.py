@@ -20,12 +20,18 @@ app = FastAPI(
 @app.middleware("http")
 async def normalize_vercel_paths(request: Request, call_next):
     """Normalize paths forwarded by Vercel serverless rewrites."""
-    path = request.scope.get("path", "")
-    for prefix in ("/api/index.py", "/api/index"):
-        if path.startswith(prefix):
-            new_path = path[len(prefix):]
-            request.scope["path"] = new_path if new_path.startswith("/") else ("/" + new_path)
-            break
+    # Check if Vercel rewrite passed original path in query param
+    original_path = request.query_params.get("__path")
+    if original_path:
+        clean_path = "/" + original_path.lstrip("/")
+        request.scope["path"] = clean_path
+    else:
+        path = request.scope.get("path", "")
+        for prefix in ("/api/index.py", "/api/index"):
+            if path.startswith(prefix):
+                new_path = path[len(prefix):]
+                request.scope["path"] = new_path if new_path.startswith("/") else ("/" + new_path)
+                break
     return await call_next(request)
 
 # Configuration
@@ -40,11 +46,13 @@ if RESEND_API_KEY:
 
 @app.get("/")
 @app.get("/health")
-async def health_check():
+async def health_check(request: Request):
     """Health check endpoint to verify deployment is running."""
     return JSONResponse({
         "status": "healthy",
         "service": "WhatsApp-to-Dext Receipt Bridge",
+        "scope_path": request.scope.get("path"),
+        "raw_headers": dict(request.headers),
         "configured": {
             "twilio_auth": bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN),
             "resend_api": bool(RESEND_API_KEY),
