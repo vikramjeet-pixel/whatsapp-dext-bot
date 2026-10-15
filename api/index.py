@@ -17,6 +17,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
+@app.middleware("http")
+async def normalize_vercel_paths(request: Request, call_next):
+    """Normalize paths forwarded by Vercel serverless rewrites."""
+    path = request.scope.get("path", "")
+    for prefix in ("/api/index.py", "/api/index"):
+        if path.startswith(prefix):
+            new_path = path[len(prefix):]
+            request.scope["path"] = new_path if new_path.startswith("/") else ("/" + new_path)
+            break
+    return await call_next(request)
+
 # Configuration
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
